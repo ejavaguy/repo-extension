@@ -1,0 +1,98 @@
+= Extending SpringData Repository
+
+SpringData Repositories have an almost infinite amount of extension capability
+within them. However -- at times -- we are going to need more. This short example
+will add a custom feature to the injected repository -- a method to return a random
+entity. We define our custom access methods in an interface.
+
+.Interface with Custom Methods
+[source,java]
+----
+public interface StudentsAccessor {
+    Student random();
+}
+----
+
+We can then extend our normal repository interface that is extending the SpringData
+Repository interface (I am using JPA here). The example is defining a few find methods
+that SpringData immediately knows what to do with. However, it also extends an interface
+with our custom methods so Spring will need some help implementing those methods.
+
+.Complete Repository Interface
+[source,java]
+----
+public interface StudentsRepo extends JpaRepository<Student, Integer>, StudentsAccessor {
+    Student findByName(String name);
+    List<Student> findAllByName(String name);
+}
+----
+
+We can then write a class that implements the interface with the custom methods
+and have it injected with context information that the rest of the repository is 
+working with. That way we can leverage the same connection, transaction, etc.
+
+.Custom Accessor Method Implementation
+[source,java]
+----
+public class StudentsAccessorImpl implements StudentsAccessor {
+    private final EntityManager em;
+    
+    @Autowired
+    public StudentsAccessorImpl(JpaContext context) {
+        em=context.getEntityManagerByManagedType(Student.class);
+    }
+
+    @Override
+    public Student random() {
+        List<Student> results = em.createQuery(
+                "select s from Student s", Student.class)
+                .getResultList();
+        return results.isEmpty() ? 
+                null : 
+                results.get(new Random().nextInt(results.size()));
+    }
+}
+----
+
+We can then inject the repository interface as usual and have Spring locate 
+our custom class as an implementor of that extended interface.
+
+[source,java]
+----
+@Component
+@Slf4j
+public class StudentInit implements CommandLineRunner {
+    private final StudentsRepo studentsRepo;
+    
+    private static final String[] NAMES = {"Mary","Bob","Peter"};
+    
+    public StudentInit(StudentsRepo studentsRepo) {
+        this.studentsRepo = studentsRepo;
+    }
+    
+    @Override
+    public void run(String... args) throws Exception {
+        for (String name: NAMES) {
+            Student student = Student.builder()
+                    .name(name)
+                    .build();
+            studentsRepo.save(student);
+        }
+        
+        log.info("students={}", studentsRepo.count());
+        log.info("random={}", studentsRepo.random());
+    }
+}
+----
+
+The output below shows that we have inserted the 3 students and can access them 
+through standard repository calls and also through a custom call.
+
+[source,text]
+----
+$ java -jar target/repo-extension-0.0.1-SNAPSHOT.jar
+...
+[main] i.e.e.s.repo.student.dao.StudentInit     : students=3
+[main] i.e.e.s.repo.student.dao.StudentInit     : random=Student(id=2, name=Bob)
+
+----
