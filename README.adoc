@@ -30,6 +30,8 @@ public interface StudentsRepo extends JpaRepository<Student, Integer>, StudentsA
 We can then write a class that implements the interface with the custom methods
 and have it injected with context information that the rest of the repository is 
 working with. That way we can leverage the same connection, transaction, etc.
+This class *must* match the configured postfix for the `repositoryImplementationPostfix`
+value, which defaults to `Impl`.
 
 .Custom Accessor Method Implementation
 [source,java]
@@ -54,7 +56,7 @@ public class StudentsAccessorImpl implements StudentsAccessor {
 }
 ----
 
-We can then inject the repository interface as usual and have Spring locate 
+We can then inject the repository interface as usual and have Spring locate
 our custom class as an implementor of that extended interface.
 
 [source,java]
@@ -96,3 +98,27 @@ $ java -jar target/repo-extension-0.0.1-SNAPSHOT.jar
 [main] i.e.e.s.repo.student.dao.StudentInit     : random=Student(id=2, name=Bob)
 
 ----
+
+== Additional Note on Naming
+Please note that my example produces success whether I name the
+implementation class `${interface}Impl` or `${customInterface}Impl`.
+https://docs.spring.io/spring-data/mongodb/docs/current/reference/html/#repositories.custom-implementations[
+Documentation] states that it should be named `${interface}Impl`
+-- thus could have been named `StudentsAccessorImpl`. However, it will
+fail if we do not use the `Impl` postfix.
+
+The `repositoryImplementationPrefix` value can be set within the
+`@EnableJpaRepositories` annotation to make alternate postfix
+naming conventions work.
+
+.Customizing the repo postfix
+----
+@SpringBootApplication
+@EnableJpaRepositories(repositoryImplementationPostfix = "Foox")
+public class RepoExtensionApplication {
+----
+.Implementing a customized postfix
+----
+public class StudentsAccessorFoox implements StudentsAccessor {
+----
+

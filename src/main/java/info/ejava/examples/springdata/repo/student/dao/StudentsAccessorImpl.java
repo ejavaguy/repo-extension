@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.jpa.repository.JpaContext;
 
 import info.ejava.examples.springdata.repo.student.bo.Student;
+import org.springframework.stereotype.Repository;
 
 public class StudentsAccessorImpl implements StudentsAccessor {
     private final EntityManager em;
